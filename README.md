@@ -1,0 +1,2 @@
+# prcmd
+Parallel remote commands
