@@ -5,6 +5,7 @@ Parallel remote commands
 - it's faster to use ssh keys from ssh-agent running on local workstation or somewhere close to it.
 - if you want to run large number of jobs in parallel, check your 'ulimit'.  make sure you have enough memory and file descriptors.
 
+```
 [2242]ping@porte:~/git/prcmd$ ./prcmd
 Usage: ./prcmd [-f] [-h file] [-l] <cmds>
       -f : remote execute in background.
@@ -40,3 +41,4 @@ Usage: ./prcmd [-f] [-h file] [-l] <cmds>
 0018 hik FAILED: connect failed
 0019 sonytv FAILED: connect failed
 
+```
