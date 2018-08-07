@@ -6,6 +6,9 @@ Parallel remote commands
 - if you want to run large number of jobs in parallel, check your 'ulimit'.  make sure you have enough memory and file descriptors.
 
 ```
+[2241]ping@porte:~/git/prcmd$ make
+cc tcpconnect.c -o tcpconnect
+
 [2242]ping@porte:~/git/prcmd$ ./prcmd
 Usage: ./prcmd [-f] [-h file] [-l] <cmds>
       -f : remote execute in background.
@@ -41,4 +44,33 @@ Usage: ./prcmd [-f] [-h file] [-l] <cmds>
 0018 hik FAILED: connect failed
 0019 sonytv FAILED: connect failed
 
+[2288]ping@porte:~/git/prcmd$ ./tcpconnect localhost 22
+[2289]ping@porte:~/git/prcmd$ echo $?
+0
+[2290]ping@porte:~/git/prcmd$ ./tcpconnect localhost 23
+[2291]ping@porte:~/git/prcmd$ echo $?
+61
+[2292]ping@porte:~/git/prcmd$ time ./tcpconnect -d 0x0001ffff -t 2000 www.google.com 80
+tcpconnect: debugflag is 0x0001ffff
+tcpconnect: connected within timeout
+
+real    0m0.014s
+user    0m0.005s
+sys     0m0.000s
+[2293]ping@porte:~/git/prcmd$ time ./tcpconnect -d 0x0001ffff -t 2000 www.google.com 81
+tcpconnect: debugflag is 0x0001ffff
+tcpconnect: timed out 2 s 0 us
+
+real    0m2.074s
+user    0m0.000s
+sys     0m0.005s
+[2294]ping@porte:~/git/prcmd$ ./tcpconnect
+tcpconnect version 0.1 by ping@stepnet.com
+tcpconnect: test tcp server presence
+  -V                 print version
+  -t usec            set timeout to micro seconds
+  -d debugflag       debug flag.  see source code
+
+Example:
+     tcpconnect -t 500 host port
 ```
