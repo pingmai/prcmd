@@ -1,4 +1,4 @@
-#!/bin/sh -f
+#!/bin/sh
 # (c) 1997 ping@stepnet.com
 
 #PATH=/opt/it/bin:$PATH
@@ -6,7 +6,7 @@
 nparallel=100
 interval=10
 user=`whoami`
-timeout=1000
+timeout=500
 
 Usage() {
 	cat <<@EOF
@@ -90,10 +90,6 @@ sshopts="$sshopts -l $user -x -n -q -oBatchMode=yes \
 
 ulimit -n 2048
 
-read _sys _host _machine << @EOF
-`uname -s -n -m`
-@EOF
-
 tcpconnect=`which tcpconnect`
 if [ $? -ne 0 ]; then
 	tcpconnect = ./tcpconnect
@@ -128,8 +124,10 @@ doit() {
 			echo "$i $h FAILED: connect failed" >&2
 			return 1
 		fi
-		ssh $sshopts $h eval "$*" 2>&1 | sed -e 's/^/'"$pre "'/'
-#		if [ ${PIPESTATUS[0]} -ne 0 ]; then
+#		ssh $sshopts $h "eval $*" 2>&1 | sed -e 's/^/'"$pre "'/'
+#		if [ $? -ne 0 ]; then
+		((((ssh $sshopts $h "eval $*" 2>&1; echo $? >&3) |\
+		sed -e 's/^/'"$pre "'/' >&4) 3>&1) | (read x; exit $x)) 4>&1
 		if [ $? -ne 0 ]; then
 			echo "$i $h ssh job FAILED" >&2
 			return 3
