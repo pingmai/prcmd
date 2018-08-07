@@ -1,6 +1,5 @@
 # prcmd
 Parallel remote commands
-
 - needs 'make' and 'cc' to build tcpconnect
 - tcpconnect tests connection to port [22] and times out after 0.5s default
 - it's faster to use ssh keys from ssh-agent running on local workstation or somewhere close to it.
