@@ -1,0 +1,162 @@
+#!/bin/sh -f
+# (c) 1997 ping@stepnet.com
+
+#PATH=/opt/it/bin:$PATH
+
+nparallel=100
+interval=10
+user=`whoami`
+timeout=1000
+
+Usage() {
+	cat <<@EOF
+Usage: $0 [-f] [-h file] [-l] <cmds>
+      -f : remote execute in background.
+      -h file : list of hostnames, 1 per line.  may be use multiple times
+      -i seconds : sleep seconds between n parrallel runs [$interval]
+      -l : local only, no ssh.  '\\\$h' is replaced by hostname
+      -n parrallel : n parrallel jobs [$nparallel]
+      -o ssh_options : extra ssh options
+	 e.g.: $0 "-oIdentitiesOnly=yes -i .ssh/id_rsa" uname -n
+      -q quiet
+      -t microseconds : connection test timeout
+      -u user : remote username [$user]
+      -y : don\'t print NNNN at beginning of line
+@EOF
+
+}
+
+if [ $# -eq 0 ]; then
+	Usage
+	exit 1
+fi
+
+while [ $# -ne 0 ]; do
+	case $1 in
+	"-f")	
+			background="&"
+			sshopts="$sshopts -n -f"
+			shift
+			;;
+	"-h")	
+			hosts="$hosts $2"
+			shift 2
+			;;
+	"-i")
+			interval="$2"
+			shift 2
+			;;
+	"-l")
+			local="YES"
+			shift
+			;;
+	"-n")
+			nparallel="$2"
+			shift 2
+			;;
+	"-o")
+			sshopts="$sshopts $2"
+			shift 2
+			;;
+	"-q")
+			quiet="YES"
+			shift
+			;;
+	"-t")
+			timeout="$2"
+			shift 2
+			;;
+	"-u")
+			user="$2"
+			shift 2
+			;;
+	"-y")
+			nonum="YES"
+			shift
+			;;
+	*)		
+			break;
+	esac
+done
+
+#unset SSH_AGENT_PID
+#unset SSH_AUTH_SOCK
+sshopts="$sshopts -l $user -x -n -q -oBatchMode=yes \
+	-oStrictHostKeyChecking=no\
+	-oForwardX11=no -oCheckHostIP=no -oHashKnownHosts=no \
+	-oConnectTimeout=10 -oServerAliveInterval=10 -oLogLevel=QUIET"
+
+[ -z "$hosts" ] && hosts="/dev/stdin"
+
+ulimit -n 2048
+
+read _sys _host _machine << @EOF
+`uname -s -n -m`
+@EOF
+
+tcpconnect=`which tcpconnect`
+if [ $? -ne 0 ]; then
+	tcpconnect = ./tcpconnect
+	test -x $tcpconnect || {
+		echo missing tcpconnect >&2 
+		exit 1
+	}
+fi
+
+doit() {
+	h=$1
+	shift
+	if [ -n "$nonum" ]; then
+		pre="$h"
+	else
+		i=`printf "%.4d" $jobs`
+		pre="$i $h"
+	fi
+
+	if [ -n "$local" ]; then
+		if [ -z "$quiet" ]; then
+			echo $*
+		fi
+		eval "$*" 2>&1 | sed -e 's/^/'"$pre "'/'
+		if [ $? -ne 0 ]; then
+			echo "$i $h eval FAILED"
+			return 2
+		fi
+	else
+		$tcpconnect -t $timeout $h 22 >/dev/null 2>&1
+		if [ $? -ne 0 ]; then
+			echo "$i $h FAILED: connect failed" >&2
+			return 1
+		fi
+		ssh $sshopts $h eval "$*" 2>&1 | sed -e 's/^/'"$pre "'/'
+#		if [ ${PIPESTATUS[0]} -ne 0 ]; then
+		if [ $? -ne 0 ]; then
+			echo "$i $h ssh job FAILED" >&2
+			return 3
+		fi
+	fi
+
+}
+
+jobs=0
+for n in $hosts; do
+	while read h; do
+		eval doit $h \'"$*"\' $background
+		jobs=`expr $jobs + 1`
+		c=`expr $jobs % $nparallel`
+		if [ "$c" -eq 0 -a -n "$background" ]; then
+#			echo "SLEEP $interval"
+			sleep $interval
+		fi
+	done << @EOF
+`
+if [ -r $n ]; then
+	egrep -v "^#" $n
+else
+	echo $n
+fi
+`
+@EOF
+done
+
+wait
